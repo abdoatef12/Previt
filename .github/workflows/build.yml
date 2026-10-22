@@ -7,7 +7,14 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - run: unzip -o APlusCam-3.zip
+      - run: for f in APlusCam*.zip; do unzip -o "$f"; done
+      - name: Fix compile error
+        run: |
+          F=APlusCam/app/src/main/java/com/aplus/procam/MainActivity.kt
+          if grep -q setVideoStabilizationEnabled $F; then
+            sed -i 's|VideoCapture.Builder(recorder).setVideoStabilizationEnabled(stab).build()|run { val vb = VideoCapture.Builder(recorder); if (stab) { Camera2Interop.Extender(vb).setCaptureRequestOption(CaptureRequest.CONTROL_VIDEO_STABILIZATION_MODE, CaptureRequest.CONTROL_VIDEO_STABILIZATION_MODE_ON) }; vb.build() }|' $F
+            sed -i 's|^import androidx.camera.camera2.interop.Camera2CameraInfo$|\&\nimport androidx.camera.camera2.interop.Camera2Interop|' $F
+          fi
       - uses: actions/setup-java@v4
         with:
           distribution: temurin
